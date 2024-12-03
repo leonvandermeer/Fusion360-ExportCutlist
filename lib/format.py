@@ -108,7 +108,7 @@ class CutlistOptimizerFormat(CSVFormat):
 
     @property
     def fieldnames(self):
-        return ['Length', 'Width', 'Qty', 'Label', 'Enabled']
+        return ['Length', 'Width', 'Qty', 'Material', 'Label', 'Enabled']
 
     def item_to_dict(self, item):
         # Note that CutlistOptimizer uses str.split to 'parse' the fields in each record. Import will
@@ -119,8 +119,9 @@ class CutlistOptimizerFormat(CSVFormat):
             fields[0]: self.format_value(item.dimensions.length),
             fields[1]: self.format_value(item.dimensions.width),
             fields[2]: item.count,
-            fields[3]: ';'.join(item.names).replace(',', ''),
-            fields[4]: 'true'
+            fields[3]: item.material.replace(',', ''),
+            fields[4]: ';'.join(item.names).replace(',', ''),
+            fields[5]: 'true'
         }
 
 
