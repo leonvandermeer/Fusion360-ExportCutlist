@@ -11,7 +11,7 @@ from collections import namedtuple
 import adsk.core
 import adsk.fusion
 
-from .lib.format import ALL_FORMATS, TableFormat, CSVFormat, get_format
+from .lib.format import ALL_FORMATS, TableFormat, CSVFormat, CutlistOptimizerFormat, get_format
 from .lib.geometry.bodies import MinimalBody, get_minimal_body
 
 
@@ -37,7 +37,7 @@ preferences = {
     'ignoreHidden': True,
     'ignoreExternal': False,
     'groupBy': DEFAULT_GROUPBY,
-    'format': TableFormat.name,
+    'format': CutlistOptimizerFormat.name,
     'unit': DEFAULT_UNIT,
     'axisAligned': False,
     'tolerance': DEFAULT_TOLERANCE,
