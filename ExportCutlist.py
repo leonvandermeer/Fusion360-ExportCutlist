@@ -90,19 +90,10 @@ class CutListItem:
         return len(self.names)
 
     def matches(self, other, group: GroupBy):
-        if isinstance(other, CutListItem):
-            other_dimensions = other.dimensions
-            other_material = other.material
-        elif isinstance(other, MinimalBody):
-            other_dimensions = Dimensions.from_body(other)
-            other_material = other.material.name
-        else:
-            return False
-
         if group.dimensions:
-            if self.dimensions != other_dimensions:
+            if self.dimensions != other.dimensions:
                 return False
-            if group.material and self.material != other_material:
+            if group.material and self.material != other.material:
                 return False
             return True
 
@@ -133,16 +124,12 @@ class CutList:
         else:
             minimal_body = get_minimal_body(body)
 
-        added = False
-        for item in self.items:
-            if item.matches(minimal_body, self.group):
-                item.add_instance(name)
-                added = True
-                break
-
-        if not added:
-            item = CutListItem(minimal_body, name)
-            self.items.append(item)
+        newItem = CutListItem(minimal_body, name)
+        m = next((i for i in self.items if i.matches(newItem, self.group)), None)
+        if m is None:
+            self.items.append(newItem)
+        else:
+            m.add_instance(name)
 
     def add(self, obj, name=None):
         if isinstance(obj, adsk.fusion.BRepBody):
