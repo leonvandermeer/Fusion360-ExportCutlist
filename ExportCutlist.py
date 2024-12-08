@@ -14,6 +14,7 @@ import adsk.fusion
 from .lib.format import ALL_FORMATS, TableFormat, CSVFormat, CutlistOptimizerFormat, get_format
 from .lib.geometry.bodies import MinimalBody, get_minimal_body
 
+from .GrainDirection import *
 
 GroupBy = namedtuple('GroupBy', ['dimensions', 'material'])
 
@@ -80,10 +81,11 @@ class Dimensions:
 
 
 class CutListItem:
-    def __init__(self, body: MinimalBody, name: str):
+    def __init__(self, body: MinimalBody, name: str, grain: GrainDirection):
         self.names = [name]
         self.dimensions = Dimensions.from_body(body)
         self.material = body.material.name
+        self.grain = grain
 
     @property
     def count(self):
@@ -93,7 +95,7 @@ class CutListItem:
         if group.dimensions:
             if self.dimensions != other.dimensions:
                 return False
-            if group.material and self.material != other.material:
+            if group.material and ((self.material != other.material) or (self.grain != other.grain)):
                 return False
             return True
 
@@ -124,7 +126,9 @@ class CutList:
         else:
             minimal_body = get_minimal_body(body)
 
-        newItem = CutListItem(minimal_body, name)
+        grain = GrainDirection.AlongWidth if name.split(self.namesep)[-1].startswith('*') else GrainDirection.AlongLength
+
+        newItem = CutListItem(minimal_body, name, grain)
         m = next((i for i in self.items if i.matches(newItem, self.group)), None)
         if m is None:
             self.items.append(newItem)
@@ -157,6 +161,7 @@ class CutList:
         items.sort(key=lambda i: attrgetter('length', 'width', 'height')(i.dimensions), reverse=True)
         items.sort(key=attrgetter('count'), reverse=True)
         items.sort(key=attrgetter('material'))
+        items.sort(key=attrgetter('grain.value'))
         return items
 
     def _joinname(self, *parts):

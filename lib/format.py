@@ -8,6 +8,7 @@ import typing
 import adsk.core
 
 from .texttable import Texttable
+from ..GrainDirection import *
 
 
 class FileFilter:
@@ -40,7 +41,6 @@ class Format:
     def format(self, cutlist):
         raise NotImplementedError
 
-
 class JSONFormat(Format):
     name = 'JSON'
     filefilter = FileFilter('JSON Files', 'json')
@@ -55,6 +55,7 @@ class JSONFormat(Format):
                 'height': self.format_value(item.dimensions.height),
             },
             'material': item.material,
+            'grain': 'length' if item.grain == GrainDirection.AlongLength else 'width',
             'names': item.names,
         }
 
@@ -74,6 +75,7 @@ class CSVFormat(Format):
         return [
             'count',
             'material',
+            'grain',
             lengthkey,
             widthkey,
             heightkey,
@@ -85,10 +87,11 @@ class CSVFormat(Format):
         return {
             fields[0]: item.count,
             fields[1]: item.material,
-            fields[2]: self.format_value(item.dimensions.length),
-            fields[3]: self.format_value(item.dimensions.width),
-            fields[4]: self.format_value(item.dimensions.height),
-            fields[5]: ','.join(item.names),
+            fields[2]: 'length' if item.grain == GrainDirection.AlongLength else 'width',
+            fields[3]: self.format_value(item.dimensions.length),
+            fields[4]: self.format_value(item.dimensions.width),
+            fields[5]: self.format_value(item.dimensions.height),
+            fields[6]: ','.join(item.names),
         }
 
     def format(self, cutlist):
@@ -108,7 +111,7 @@ class CutlistOptimizerFormat(CSVFormat):
 
     @property
     def fieldnames(self):
-        return ['Length', 'Width', 'Qty', 'Material', 'Label', 'Enabled']
+        return ['Length', 'Width', 'Qty', 'Material', 'Label', 'Enabled', 'Grain direction']
 
     def item_to_dict(self, item):
         # Note that CutlistOptimizer uses str.split to 'parse' the fields in each record. Import will
@@ -119,9 +122,10 @@ class CutlistOptimizerFormat(CSVFormat):
             fields[0]: self.format_value(item.dimensions.length),
             fields[1]: self.format_value(item.dimensions.width),
             fields[2]: item.count,
-            fields[3]: item.material.replace(',', ''),
+            fields[3]: item.material.replace(',', '') + ' ' + self.format_value(item.dimensions.height),
             fields[4]: ';'.join(item.names).replace(',', ''),
-            fields[5]: 'true'
+            fields[5]: 'true',
+            fields[6]: 'v' if item.grain == GrainDirection.AlongLength else 'h'
         }
 
 
@@ -137,7 +141,7 @@ class CutlistEvoFormat(CSVFormat):
 
     @property
     def fieldnames(self):
-        return ['Length', 'Width', 'Thickness', 'Quantity', 'Rotation', 'Name', 'Material', 'Banding']
+        return ['Length', 'Width', 'Thickness', 'Quantity', 'Rotation', 'Name', 'Material', 'Grain ', 'Banding']
 
     def item_to_dict(self, item):
         fields = self.fieldnames
@@ -149,7 +153,8 @@ class CutlistEvoFormat(CSVFormat):
             fields[4]: ','.join(['L'] * item.count),
             fields[5]: ','.join(item.names),
             fields[6]: item.material,
-            fields[7]: ','.join(['N'] * item.count),
+            fields[7]: 'L' if item.grain == GrainDirection.AlongLength else 'W',
+            fields[8]: ','.join(['N'] * item.count)
         }
 
 
@@ -159,12 +164,13 @@ class TableFormat(Format):
     @property
     def fieldnames(self):
         lengthkey, widthkey, heightkey = [f'{v} ({self.units})' for v in ['length', 'width', 'height']]
-        return ['count', 'material', lengthkey, widthkey, heightkey, 'names']
+        return ['count', 'material', 'grain', lengthkey, widthkey, heightkey, 'names']
 
     def item_to_row(self, item):
         return [
             item.count,
             item.material,
+            'length' if item.grain == GrainDirection.AlongLength else 'width',
             self.format_value(item.dimensions.length),
             self.format_value(item.dimensions.width),
             self.format_value(item.dimensions.height),
@@ -175,8 +181,8 @@ class TableFormat(Format):
         tt = Texttable(max_width=0)
         tt.set_deco(Texttable.HEADER | Texttable.HLINES)
         tt.header(self.fieldnames)
-        tt.set_cols_dtype(['i', 't', 't', 't', 't', 't'])
-        tt.set_cols_align(['r', 'l', 'r', 'r', 'r', 'l'])
+        tt.set_cols_dtype(['i', 't', 't', 't', 't', 't', 't'])
+        tt.set_cols_align(['r', 'l', 'l', 'r', 'r', 'r', 'l'])
         tt.add_rows([self.item_to_row(item) for item in cutlist.sorted_items()], header=False)
         return tt.draw()
 
@@ -188,7 +194,7 @@ class HTMLFormat(Format):
     @property
     def fieldnames(self):
         lengthkey, widthkey, heightkey = [f'{v} ({self.units})' for v in ['Length', 'Width', 'Height']]
-        return ['Count', lengthkey, widthkey, heightkey, 'Material', 'Names']
+        return ['Count', lengthkey, widthkey, heightkey, 'Material', 'Grain', 'Names']
 
     def item_to_row(self, item):
         cols = [
@@ -197,6 +203,7 @@ class HTMLFormat(Format):
             self.format_value(item.dimensions.width),
             self.format_value(item.dimensions.height),
             html.escape(item.material),
+            'length' if item.grain == GrainDirection.AlongLength else 'width',
             '<br>'.join(html.escape(n) for n in item.names),
         ]
         return '<tr>' + ''.join(f'<td>{c}</td>' for c in cols) + '</tr>'
@@ -223,7 +230,7 @@ class HTMLFormat(Format):
                     }}
                 </style>
             </html>
-            </body>
+            <body>
                 <h1>{title} Cutlist</h1>
                 <table>
                     <thead>{header}</thead>
