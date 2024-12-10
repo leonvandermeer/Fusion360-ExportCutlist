@@ -7,6 +7,6 @@
   },
   "supportedOS": "windows|mac",
   "editEnabled": true,
-  "version": "v0.5.2",
+  "version": "v0.5.2-udb.07a50c6ddf982d3403cdbba85b7d3306894ac44f",
   "runOnStartup": true
 }
